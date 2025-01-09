@@ -1,0 +1,1 @@
+A few scripts for creating bookmarks for giving out at conferences. In each case the goal of the bookmarks are to drive 'clicks' to websites. Inspired by conversations in Northwestern Universities PBC 450 seminar on Visual Presentations.
