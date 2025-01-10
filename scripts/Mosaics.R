@@ -84,6 +84,8 @@ panelR <- function(x, y, xORy, n, add){
 }
 
 
+x <- c(0.2, 1.8, 1.8, 0.2, 0.2) 
+y <- c(0.2, 0.2, 1.6, 1.6, 0.2)
 
 panels <- panelR(x, y, xORy= 'Y', n = 4, add = 1.4)
 ggplot2::ggplot(panels) + 
@@ -95,43 +97,86 @@ ggplot2::ggplot(panels) +
 1.8/23
 1.6/20
 
-
 # create all mosaics for all panels at once, and then assign
 # creating by panel will result in some ugly clipping of them. 
-
 gr <- sf::st_make_grid(panels, n = c(20, 90), square = FALSE)
-gr <- sf::st_intersection(panels, gr)
-gr <- gr[ sf::st_is(gr, 'POLYGON'), ]
 
+#' snap generated grids to a polygon and number the cells by rows and column
+#' 
+#' @param gr an sf object. grids created over a set of panels 
+#' @param panels an sf object. polygons created from `panelR`
+grids2poly <- function(panels, gr){
+  
+  gr <- sf::st_intersection(panels, gr)
+  gr <- gr[ sf::st_is(gr, 'POLYGON'), ]
+  gr <- gr |> dplyr::mutate(gr, ID = 1:dplyr::n(), .before = 1)
+  
+  gr1 <- gr %>% 
+    sf::st_centroid() %>% 
+    dplyr::mutate(
+      x = sf::st_coordinates(.)[,'X'],
+      y = sf::st_coordinates(.)[,'Y']
+    ) |>
+    dplyr::arrange(y) |>
+    dplyr::group_by(y) |>
+    dplyr::mutate(row = dplyr::cur_group_id()) |>
+    dplyr::arrange(x) |>
+    dplyr::group_by(x) |>
+    dplyr::mutate(col = dplyr::cur_group_id()) |>
+    dplyr::select(ID,  col, row) |>
+    sf::st_drop_geometry() |>
+    dplyr::arrange(ID)
+  
+  gr <- dplyr::left_join(gr, gr1, by = 'ID') 
+  
+}
 
-??billow
-fractals <- list(billow, fbm, ridged)
-generators <- list(gen_simplex, gen_perlin, gen_worley)
+gr <- grids2poly(panels, gr)
 
-??fbm
+ggplot() + 
+  geom_sf(data=gr, aes(fill = col))
+# understanding how to generate the fillzzz this lady has mad skillzzz (but does not
+# document code the way others would...)
 
-gr |>
+sample_canva <- function(seed = NULL) {
+  if(!is.null(seed)) set.seed(seed)
+  sample(ggthemes::canva_palettes, 1)[[1]]
+}
+
+fractals <- list(ambient::billow, ambient::fbm, ambient::ridged)
+generators <- list(ambient::gen_simplex, ambient::gen_perlin, ambient::gen_worley)
+
+value <- 0.25
+nshades = 50
+
+obby <- gr |>
   dplyr::mutate(
-    fill = 10 * value + fracture(
-      x = x * sample(-3:3, 1),
-      y = y * sample(-3:3, 1),
+    fill = 10 * value + ambient::fracture(
+      x = col * sample(-4:3, 1),
+      y = row * sample(-4:3, 1),
       noise = sample(generators, 1)[[1]],
       fractal = sample(fractals, 1)[[1]],
-      octaves = sample(10, 1),
-      frequency = sample(10, 1) / 20,
+      octaves = sample(10, 1), 
+      frequency = sample(10, 1) / 20, # lower than 15 no good, above 25 too random
       value = "distance2"
     ) |>
-      normalise(to = c(1, nshades)) |> 
+      ambient::normalise(to = c(1, nshades)) |> 
       round()
   )
 
 
+pal1 = c('#5AAA95', '#095256')
+pal2 <- c('#9C7A97', '#C6D4FF')
+pal4 = c('#D5A021', '#BF3100')
+pal3 <- c('#EE7674', '#F9B5AC')
+
+adjustcolor("white", alpha.f = 0.2)
+
 ggplot() + 
   geom_sf(data = outer_border, fill = '#BDC4A7') + 
-  geom_sf(data = inner_border, fill = NA) + 
-  geom_sf(data = panels, fill = NA) + 
- geom_sf(data = gr)
-#  theme_void()
+  geom_sf(data = obby, aes(fill = fill), color = "#BDC4A7") + 
+  geom_sf(data = panels, fill = adjustcolor("white", alpha.f = 0.1)) + # subdue the colors just slightly. ds
+  scale_fill_gradientn(colours = pal2) + 
+  theme_void() + 
+  theme(legend.position = 'none')
 
-
-?geom_sf()
