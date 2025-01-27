@@ -71,26 +71,38 @@ panelR <- function(x, y, xORy, n, add){
 #' @param panels an sf object. polygons created from `panelR`
 grids2poly <- function(panels, gr){
   
-  gr <- sf::st_intersection(panels, gr)
-  gr <- gr[ sf::st_is(gr, 'POLYGON'), ]
-  gr <- gr |> dplyr::mutate(gr, ID = 1:dplyr::n(), .before = 1)
+ # sf::st_agr(gr) = "constant"#; sf::st_agr(panels) = "constant"
+  samps <- sf::st_intersects(gr, panels)
+  samps <-  unlist(lapply(samps, function(x){y <- x[sample(1:length(x), size = 1)]}))
   
-  gr1 <- gr %>% 
+  gr <- dplyr::bind_cols(
+    Panel = samps,
+    geometry = st_as_sf(gr)
+  ) |>
+    sf::st_as_sf()
+
+  gr <- st_intersection(gr, st_union(panels))
+  gr <- gr[sf::st_is(gr, 'POLYGON'),]
+  gr <- gr |> 
+    dplyr::mutate(gr, ID = 1:dplyr::n(), .before = 1) |>
+    dplyr::rename(geometry = x)
+  
+  gr2 <- gr %>% 
     sf::st_centroid() %>% 
     dplyr::mutate(
       x = sf::st_coordinates(.)[,'X'],
       y = sf::st_coordinates(.)[,'Y']
     ) |>
-    dplyr::arrange(y) |>
-    dplyr::group_by(y) |>
+   dplyr::arrange(y) |>
+   dplyr::group_by(y) |>
     dplyr::mutate(row = dplyr::cur_group_id()) |>
-    dplyr::arrange(x) |>
-    dplyr::group_by(x) |>
+    dplyr::arrange(x) |> 
+    dplyr::group_by(x) |> 
     dplyr::mutate(col = dplyr::cur_group_id()) |>
     dplyr::select(ID,  col, row) |>
     sf::st_drop_geometry() |>
     dplyr::arrange(ID)
   
-  gr <- dplyr::left_join(gr, gr1, by = 'ID') 
+  gr <- dplyr::left_join(gr, gr2, by = 'ID') 
   
 }

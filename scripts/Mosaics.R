@@ -1,5 +1,6 @@
 library(sf)
 library(ggplot2)
+setwd('~/Documents/assoRted/ConferenceBookmarks/scripts')
 source('functions.R')
 
 # create the border of the bookmark. 
@@ -36,12 +37,10 @@ ggplot2::ggplot(panels) +
 
 # create all mosaics for all panels at once, and then assign
 # creating by panel will result in some ugly clipping of them. 
-gr <- sf::st_make_grid(panels, n = c(20, 90), square = FALSE)
 
+gr <- sf::st_make_grid(panels, n = c(20, 90), square = FALSE)
 gr <- grids2poly(panels, gr)
 
-ggplot() + 
-  geom_sf(data=gr, aes(fill = col))
 # understanding how to generate the fillzzz this lady has mad skillzzz (but does not
 # document code the way others would...)
 
@@ -77,6 +76,19 @@ pal2 <- c('#9C7A97', '#C6D4FF')
 pal4 = c('#D5A021', '#BF3100')
 pal3 <- c('#EE7674', '#F9B5AC')
 
+ez <- png::readPNG('../logos/eSTZwritR.png')
+sh <- png::readPNG('../logos/safeHavens.png')
+bl <- png::readPNG('../logos/BarnebyLives.png')
+
+aboutText <- data.frame(
+  package = c('BarnebyLives', 'safeHavens', 'eSTZwritR', 'rseedneed'), 
+  about = c(
+    'Tools for collecting digital data on herbarium specimens.',
+    'Tools to help germplasm curators prioritize areas for new accessions',
+    'For sharing empirical Seed Transfer Zones (STZs) spatial data products.', 
+    'Estimating seed market size (under development)'
+  )
+)
 
 ggplot() + 
   geom_sf(data = outer_border, fill = '#BDC4A7') + 
@@ -103,9 +115,15 @@ ggplot() +
           aes(fill = fill), color = "#BDC4A7") + 
   scale_fill_gradientn(colours = pal2) + 
   
-  # subdue the colors just slightly. ds
-  geom_sf(data = panels, fill = adjustcolor("white", alpha.f = 0.2)) + 
+  # subdue the colors just slightly.
+  geom_sf(data = st_union(panels), fill = adjustcolor("white", alpha.f = 0.2)) + 
+  
+  # add on the images
+  annotation_raster(ez, xmin = 0.2, xmax = 0.95, ymin = 4.75, ymax = 5.7) +
+  annotation_raster(sh, xmin = 0.2, xmax = 0.95, ymin = 1.75, ymax = 2.7) +
+  annotation_raster(bl, xmin = 1.05, xmax = 1.8, ymin = 3.15, ymax = 4.1) + 
   
   theme_void() + 
   theme(legend.position = 'none')
+
 
